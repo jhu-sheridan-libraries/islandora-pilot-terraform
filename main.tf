@@ -171,7 +171,7 @@ resource "aws_instance" "vm" {
     ami = "ami-4bf3d731"
     key_name = "operations"
     vpc_security_group_ids = [ aws_security_group.ssh.id, aws_security_group.drupal.id, aws_security_group.egress.id ]
-    instance_type = "t2.micro"
+    instance_type = "t2.large"
     subnet_id = random_shuffle.shuffled_public_subnet_ids.result[0]
 
     root_block_device {
