@@ -1,5 +1,13 @@
 provider "aws" {}
 
+terraform {
+	backend "s3" {
+	  bucket = "msel-ops-terraform-statefiles"
+	  key = "applications/i8p"
+	  region = "us-east-1"
+	}
+}
+
 locals {
     tags = merge(
         {
