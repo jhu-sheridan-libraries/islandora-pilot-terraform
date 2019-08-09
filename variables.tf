@@ -5,3 +5,8 @@ variable "common_tags" {
           Project = "Islandora 8 Pilot"
       }
 }
+
+variable "route53_zone" {
+  type = string
+  default = "cloud.library.jhu.edu"
+}

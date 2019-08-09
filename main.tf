@@ -19,6 +19,10 @@ locals {
     public_subnet_ids = [ aws_subnet.public_primary.id, aws_subnet.public_secondary.id ]
 }
 
+data "aws_route53_zone" "zone" {
+    name = var.route53_zone
+}
+
 resource "aws_vpc" "main" {
     cidr_block = "172.0.0.0/16"
     enable_dns_support = true
@@ -175,6 +179,11 @@ resource "random_shuffle" "shuffled_public_subnet_ids" {
     input = [ aws_subnet.public_primary.id, aws_subnet.public_secondary.id ]
 }
 
+resource "aws_eip" "vm" {
+    vpc = true
+    instance = aws_instance.vm.id
+}
+
 resource "aws_instance" "vm" {
     ami = "ami-4bf3d731"
     key_name = "operations"
@@ -194,4 +203,12 @@ resource "aws_instance" "vm" {
         },
         local.tags
     )
+}
+
+resource "aws_route53_record" "i8p" {
+    zone_id = data.aws_route53_zone.zone.id
+    name = format("i8p.%s", var.route53_zone)
+    type = "A"
+    ttl = "300"
+    records = [ aws_eip.vm.public_ip ]
 }
