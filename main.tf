@@ -3,7 +3,7 @@ provider "aws" {}
 terraform {
 	backend "s3" {
 	  bucket = "msel-ops-terraform-statefiles"
-	  key = "applications/i8p"
+	  key = "applications/islandora"
 	  region = "us-east-1"
 	}
 }
@@ -30,7 +30,7 @@ resource "aws_vpc" "main" {
 
     tags = merge(
         {
-            Name = format("i8p-%s", terraform.workspace)
+            Name = format("%s-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
@@ -44,7 +44,7 @@ resource "aws_subnet" "public_primary" {
     map_public_ip_on_launch = true
     tags = merge(
         {
-            Name = format("i8p-public-primary-%s", terraform.workspace)
+            Name = format("%s-public-primary-%s", var.project_prefix, terraform.workspace)
             Environment = terraform.workspace
         },
         local.tags
@@ -58,7 +58,7 @@ resource "aws_subnet" "public_secondary" {
     map_public_ip_on_launch = true
     tags = merge(
         {
-            Name = format("i8p-public-secondary-%s", terraform.workspace)
+            Name = format("%s-public-secondary-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
@@ -71,7 +71,7 @@ resource "aws_subnet" "private" {
 
     tags = merge (
     {
-        Name = format("i8p-private-%s", terraform.workspace)
+        Name = format("%s-private-%s", var.project_prefix, terraform.workspace)
     },
     local.tags
     )
@@ -82,22 +82,11 @@ resource "aws_internet_gateway" "internet" {
 
     tags = merge(
         {
-            Name = format("i8p-%s", terraform.workspace)
+            Name = format("%s-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
 }
-
-# resource "aws_eip" "nat" {
-#     vpc = true
-
-#     tags = merge(
-#         {
-#             Name = format("i8p-%s", terraform.workspace)
-#         },
-#         local.tags
-#     )
-# }
 
 resource "aws_route" "default-igw" {
     route_table_id = aws_vpc.main.main_route_table_id
@@ -127,7 +116,7 @@ resource "aws_security_group" "ssh" {
 
     tags = merge(
         {
-            Name = format("i8p-ssh-ingress-%s", terraform.workspace)
+            Name = format("%s-ssh-ingress-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
@@ -152,7 +141,7 @@ resource "aws_security_group" "drupal" {
 
     tags = merge(
         {
-            Name = format("i8p-drupal-ingress-%s", terraform.workspace)
+            Name = format("%s-drupal-ingress-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
@@ -169,7 +158,7 @@ resource "aws_security_group" "egress" {
 
     tags = merge(
         {
-            Name = format("i8p-egress-%s", terraform.workspace)
+            Name = format("%s-egress-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
@@ -199,16 +188,34 @@ resource "aws_instance" "vm" {
 
     tags = merge(
         {
-            Name = format("i8p-%s", terraform.workspace)
+            Name = format("%s-%s", var.project_prefix, terraform.workspace)
         },
         local.tags
     )
+
+    # this provisioner acts as a "wait" for the playbook provisioner below.
+    provisioner "remote-exec" {
+        inline = ["sudo yum -y install python"]
+
+        connection {
+            type        = "ssh"
+            user        = "centos"
+            private_key = "${file(var.ssh_key_private)}"
+            host        = "${self.public_ip}"
+        }
+    }
+
+    # use ansible to blow on the new playbook.
+    provisioner "local-exec" {
+        command = "ANSIBLE_CONFIG='../islandora-playbook/ansible.cfg' ansible-playbook -u centos -i '${var.islandora_inv_path}' -e '@../islandora-extra-vars/extra-vars.yml' -e ansible_ssh_host='${self.public_ip}' --private-key ${var.ssh_key_private} ../islandora-playbook/playbook.yml -l default" 
+    }
 }
 
 resource "aws_route53_record" "i8p" {
     zone_id = data.aws_route53_zone.zone.id
-    name = format("i8p.%s", var.route53_zone)
+    name = format("%s.%s", var.project_prefix, var.route53_zone)
     type = "A"
     ttl = "300"
     records = [ aws_eip.vm.public_ip ]
 }
+
