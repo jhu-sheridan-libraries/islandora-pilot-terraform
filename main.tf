@@ -126,8 +126,8 @@ resource "aws_security_group" "drupal" {
     vpc_id = aws_vpc.main.id
 
     ingress {
-        from_port = 8000
-        to_port = 8000
+        from_port = var.ext_port
+        to_port = var.ext_port
         cidr_blocks = [ "0.0.0.0/0" ]
         protocol = "tcp"
     }
@@ -207,7 +207,7 @@ resource "aws_instance" "vm" {
 
     # use ansible to blow on the new playbook.
     provisioner "local-exec" {
-        command = "ANSIBLE_CONFIG='../islandora-playbook/ansible.cfg' ansible-playbook -u centos -i '${var.islandora_inv_path}' -e '@../islandora-extra-vars/extra-vars.yml' -e ansible_ssh_host='${self.public_ip}' --private-key ${var.ssh_key_private} ../islandora-playbook/playbook.yml -l default" 
+        command = "ANSIBLE_CONFIG='../islandora-playbook/ansible.cfg' ansible-playbook -u centos -i '${var.islandora_inv_path}' -e '@../islandora-extra-vars/extra-vars.yml' -e ansible_ssh_host='${self.public_ip}' --private-key ${var.ssh_key_private} ../islandora-playbook/playbook.yml -l default -e ext_host='${format("%s.%s", var.project_prefix, var.route53_zone)}' -e ext_port='${var.ext_port}'" 
     }
 }
 

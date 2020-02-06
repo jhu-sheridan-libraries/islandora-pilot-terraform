@@ -25,3 +25,8 @@ variable "islandora_inv_path" {
   type = string
   default = "~/inventory"
 }
+
+variable "ext_port" {
+  type = string
+  default = "8000"
+}
