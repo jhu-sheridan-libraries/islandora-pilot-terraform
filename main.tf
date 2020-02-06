@@ -207,7 +207,7 @@ resource "aws_instance" "vm" {
 
     # use ansible to blow on the new playbook.
     provisioner "local-exec" {
-        command = "ansible-playbook -u centos -i '${var.islandora_inv_path}' -e ansible_ssh_host='${self.public_ip}' --private-key ${var.ssh_key_private} ../islandora-pilot/playbook.yml -l default" 
+        command = "ANSIBLE_CONFIG='../islandora-playbook/ansible.cfg' ansible-playbook -u centos -i '${var.islandora_inv_path}' -e '@../islandora-extra-vars/extra-vars.yml' -e ansible_ssh_host='${self.public_ip}' --private-key ${var.ssh_key_private} ../islandora-playbook/playbook.yml -l default" 
     }
 }
 
